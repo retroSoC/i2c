@@ -169,7 +169,7 @@ module i2c_master_bit_ctrl (
   always @(posedge clk_i or negedge rst_n_i)
     if (!rst_n_i) r_filter_cnt <= #1 14'h0;
     else if (!ena_i) r_filter_cnt <= #1 14'h0;
-    else if (~|r_filter_cnt) r_filter_cnt <= #1 clk_cnt_i >> 2;  //16x I2C bus frequency
+    else if (~|r_filter_cnt) r_filter_cnt <= #1 clk_cnt_i[15:2];  //16x I2C bus frequency
     else r_filter_cnt <= #1 r_filter_cnt - 1;
 
 
