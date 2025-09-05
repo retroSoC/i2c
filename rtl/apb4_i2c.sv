@@ -20,12 +20,40 @@
 // MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 // See the Mulan PSL v2 for more details.
 
+`include "apb4_if.svh"
 `include "i2c_define.svh"
 
 module apb4_i2c (
+`ifdef __VERILOG__
+    `apb4_slave_if(apb4),
+    input  i2c_scl_i,
+    output i2c_scl_o,
+    output i2c_scl_dir_o,
+    input  i2c_sda_i,
+    output i2c_sda_o,
+    output i2c_sda_dir_o,
+    output i2c_irq_o
+`else
     apb4_if.slave apb4,
     i2c_if.dut    i2c
+`endif
 );
+
+`ifndef __VERILOG__
+  `apb4_slave_if2wire(apb4, apb4);
+  logic i2c_scl_i = i2c.scl_i;
+  logic i2c_sda_i = i2c.sda_i;
+  logic i2c_scl_o;
+  logic i2c_scl_dir_o;
+  logic i2c_sda_o;
+  logic i2c_sda_dir_o;
+  logic i2c_irq_o;
+  assign i2c.scl_o     = i2c_scl_o    ;
+  assign i2c.scl_dir_o = i2c_scl_dir_o;
+  assign i2c.sda_o     = i2c_sda_o    ;
+  assign i2c.sda_dir_o = i2c_sda_dir_o;
+  assign i2c.irq_o     = i2c_irq_o    ;
+`endif
 
   logic [3:0] s_apb4_addr;
   logic s_apb4_wr_hdshk, s_apb4_rd_hdshk;
@@ -49,11 +77,11 @@ module apb4_i2c (
   logic s_i2c_al_d, s_i2c_al_q;
   logic s_irq_d, s_irq_q;
 
-  assign s_apb4_addr     = apb4.paddr[5:2];
-  assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
-  assign s_apb4_rd_hdshk = apb4.psel && apb4.penable && (~apb4.pwrite);
-  assign apb4.pready     = 1'b1;
-  assign apb4.pslverr    = 1'b0;
+  assign s_apb4_addr     = apb4_paddr[5:2];
+  assign s_apb4_wr_hdshk = apb4_psel && apb4_penable && apb4_pwrite;
+  assign s_apb4_rd_hdshk = apb4_psel && apb4_penable && (~apb4_pwrite);
+  assign apb4_pready     = 1'b1;
+  assign apb4_pslverr    = 1'b0;
 
   assign s_bit_ien       = s_i2c_ctrl_q[6];
   assign s_bit_en        = s_i2c_ctrl_q[7];
@@ -72,33 +100,33 @@ module apb4_i2c (
   assign s_i2c_sr[6]     = s_i2c_busy;
   assign s_i2c_sr[7]     = s_i2c_rxack_q;
 
-  assign i2c.irq_o       = s_irq_q;
+  assign i2c_irq_o       = s_irq_q;
 
   assign s_i2c_ctrl_en   = s_apb4_wr_hdshk && s_apb4_addr == `I2C_CTRL;
-  assign s_i2c_ctrl_d    = apb4.pwdata[`I2C_CTRL_WIDTH-1:0];
+  assign s_i2c_ctrl_d    = apb4_pwdata[`I2C_CTRL_WIDTH-1:0];
   dffer #(`I2C_CTRL_WIDTH) u_i2c_ctrl_dffer (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_ctrl_en,
       s_i2c_ctrl_d,
       s_i2c_ctrl_q
   );
 
   assign s_i2c_pscr_en = s_apb4_wr_hdshk && s_apb4_addr == `I2C_PSCR;
-  assign s_i2c_pscr_d  = apb4.pwdata[`I2C_PSCR_WIDTH-1:0];
+  assign s_i2c_pscr_d  = apb4_pwdata[`I2C_PSCR_WIDTH-1:0];
   dfferc #(`I2C_PSCR_WIDTH, `I2C_PSCR_MAX_VAL) u_i2c_pscr_dfferc (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_pscr_en,
       s_i2c_pscr_d,
       s_i2c_pscr_q
   );
 
   assign s_i2c_txr_en = s_apb4_wr_hdshk && s_apb4_addr == `I2C_TXR;
-  assign s_i2c_txr_d  = apb4.pwdata[`I2C_TXR_WIDTH-1:0];
+  assign s_i2c_txr_d  = apb4_pwdata[`I2C_TXR_WIDTH-1:0];
   dffer #(`I2C_TXR_WIDTH) u_i2c_txr_dffer (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_txr_en,
       s_i2c_txr_d,
       s_i2c_txr_q
@@ -111,12 +139,12 @@ module apb4_i2c (
     if (s_i2c_done | s_i2c_al) begin // clear the cmd flag when trans done or err
       s_i2c_cmd_d[7:4] = 4'b0;
     end else if (s_apb4_wr_hdshk && s_apb4_addr == `I2C_CMD && s_bit_en) begin
-      s_i2c_cmd_d = apb4.pwdata[`I2C_CMD_WIDTH-1:0];
+      s_i2c_cmd_d = apb4_pwdata[`I2C_CMD_WIDTH-1:0];
     end
   end
   dffer #(`I2C_CMD_WIDTH) u_i2c_cmd_dffer (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_cmd_en,
       s_i2c_cmd_d,
       s_i2c_cmd_q
@@ -124,61 +152,61 @@ module apb4_i2c (
 
   assign s_i2c_al_d = s_i2c_al | (s_i2c_al_q & (~s_bit_sta));
   dffr #(1) u_i2c_al_dffr (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_al_d,
       s_i2c_al_q
   );
 
   assign s_i2c_rxack_d = s_i2c_irxack;
   dffr #(1) u_i2c_rxack_dffr (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_rxack_d,
       s_i2c_rxack_q
   );
 
   assign s_i2c_tip_d = s_bit_wr | s_bit_rd;
   dffr #(1) u_i2c_tip_dffr (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_tip_d,
       s_i2c_tip_q
   );
 
   assign s_i2c_irq_d = (s_i2c_done | s_i2c_al | s_i2c_irq_q) & (~s_bit_iack);
   dffr #(1) u_i2c_irq_dffr (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_i2c_irq_d,
       s_i2c_irq_q
   );
 
   assign s_irq_d = s_i2c_irq_q && s_bit_ien;
   dffr #(1) u_irq_dffr (
-      apb4.pclk,
-      apb4.presetn,
+      apb4_pclk,
+      apb4_presetn,
       s_irq_d,
       s_irq_q
   );
 
   always_comb begin
-    apb4.prdata = '0;
+    apb4_prdata = '0;
     if (s_apb4_rd_hdshk) begin
       unique case (s_apb4_addr)
-        `I2C_CTRL: apb4.prdata[`I2C_CTRL_WIDTH-1:0] = s_i2c_ctrl_q;
-        `I2C_PSCR: apb4.prdata[`I2C_PSCR_WIDTH-1:0] = s_i2c_pscr_q;
-        `I2C_TXR:  apb4.prdata[`I2C_TXR_WIDTH-1:0] = s_i2c_txr_q;
-        `I2C_RXR:  apb4.prdata[`I2C_RXR_WIDTH-1:0] = s_i2c_rxr;
-        `I2C_SR:   apb4.prdata[`I2C_SR_WIDTH-1:0] = s_i2c_sr;
-        default:   apb4.prdata = '0;
+        `I2C_CTRL: apb4_prdata[`I2C_CTRL_WIDTH-1:0] = s_i2c_ctrl_q;
+        `I2C_PSCR: apb4_prdata[`I2C_PSCR_WIDTH-1:0] = s_i2c_pscr_q;
+        `I2C_TXR:  apb4_prdata[`I2C_TXR_WIDTH-1:0] = s_i2c_txr_q;
+        `I2C_RXR:  apb4_prdata[`I2C_RXR_WIDTH-1:0] = s_i2c_rxr;
+        `I2C_SR:   apb4_prdata[`I2C_SR_WIDTH-1:0] = s_i2c_sr;
+        default:   apb4_prdata = '0;
       endcase
     end
   end
 
   i2c_master_byte_ctrl u_i2c_master_byte_ctrl (
-      .clk_i     (apb4.pclk),
-      .rst_n_i   (apb4.presetn),
+      .clk_i     (apb4_pclk),
+      .rst_n_i   (apb4_presetn),
       .ena_i     (s_bit_en),
       .clk_cnt_i (s_i2c_pscr_q),
       .start_i   (s_bit_sta),
@@ -192,12 +220,12 @@ module apb4_i2c (
       .dat_o     (s_i2c_rxr),
       .i2c_busy_o(s_i2c_busy),
       .i2c_al_o  (s_i2c_al),
-      .scl_i     (i2c.scl_i),
-      .scl_o     (i2c.scl_o),
-      .scl_dir_o (i2c.scl_dir_o),
-      .sda_i     (i2c.sda_i),
-      .sda_o     (i2c.sda_o),
-      .sda_dir_o (i2c.sda_dir_o)
+      .scl_i     (i2c_scl_i),
+      .scl_o     (i2c_scl_o),
+      .scl_dir_o (i2c_scl_dir_o),
+      .sda_i     (i2c_sda_i),
+      .sda_o     (i2c_sda_o),
+      .sda_dir_o (i2c_sda_dir_o)
   );
 
 endmodule
