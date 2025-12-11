@@ -86,7 +86,7 @@ module apb4_i2c (
 
   assign s_i2c_pscr_en = s_apb4_wr_hdshk && s_apb4_addr == `I2C_PSCR;
   assign s_i2c_pscr_d  = apb4.pwdata[`I2C_PSCR_WIDTH-1:0];
-  dfferc #(`I2C_PSCR_WIDTH, `I2C_PSCR_MAX_VAL) u_i2c_pscr_dfferc (
+  dfferc #(`I2C_PSCR_WIDTH, logic[`I2C_PSCR_WIDTH-1:0], `I2C_PSCR_MAX_VAL) u_i2c_pscr_dfferc (
       apb4.pclk,
       apb4.presetn,
       s_i2c_pscr_en,
