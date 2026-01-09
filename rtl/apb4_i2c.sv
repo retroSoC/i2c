@@ -86,7 +86,7 @@ module apb4_i2c (
 
   assign s_i2c_pscr_en = s_apb4_wr_hdshk && s_apb4_addr == `I2C_PSCR;
   assign s_i2c_pscr_d  = apb4.pwdata[`I2C_PSCR_WIDTH-1:0];
-  dfferc #(`I2C_PSCR_WIDTH, logic[`I2C_PSCR_WIDTH-1:0], `I2C_PSCR_MAX_VAL) u_i2c_pscr_dfferc (
+  dfferc #(`I2C_PSCR_WIDTH, `I2C_PSCR_MAX_VAL) u_i2c_pscr_dfferc (
       apb4.pclk,
       apb4.presetn,
       s_i2c_pscr_en,
@@ -108,7 +108,7 @@ module apb4_i2c (
   always_comb begin
     s_i2c_cmd_d      = s_i2c_cmd_q;
     s_i2c_cmd_d[2:0] = 3'b0;
-    if (s_i2c_done | s_i2c_al) begin // clear the cmd flag when trans done or err
+    if (s_i2c_done | s_i2c_al) begin  // clear the cmd flag when trans done or err
       s_i2c_cmd_d[7:4] = 4'b0;
     end else if (s_apb4_wr_hdshk && s_apb4_addr == `I2C_CMD && s_bit_en) begin
       s_i2c_cmd_d = apb4.pwdata[`I2C_CMD_WIDTH-1:0];
