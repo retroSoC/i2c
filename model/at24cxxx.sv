@@ -60,7 +60,7 @@
 //                            DEVICE SELECTION
 ////////////////////////////////////////////////////////////////////////////
 
-`define WANT_VERBOSE 1
+`define WANT_VERBOSE 0
 
 // Slave address formats
 // 1M 1010_0_A1_P0_R/W
