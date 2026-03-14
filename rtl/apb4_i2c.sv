@@ -194,10 +194,10 @@ module apb4_i2c (
       .i2c_al_o  (s_i2c_al),
       .scl_i     (i2c.scl_i),
       .scl_o     (i2c.scl_o),
-      .scl_dir_o (i2c.scl_dir_o),
+      .scl_oe_o  (i2c.scl_oe_o),
       .sda_i     (i2c.sda_i),
       .sda_o     (i2c.sda_o),
-      .sda_dir_o (i2c.sda_dir_o)
+      .sda_oe_o  (i2c.sda_oe_o)
   );
 
 endmodule

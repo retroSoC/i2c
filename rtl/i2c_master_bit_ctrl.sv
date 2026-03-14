@@ -99,17 +99,17 @@ module i2c_master_bit_ctrl (
     output reg        dat_o,
     input             scl_i,      // i2c clock line input
     output            scl_o,      // i2c clock line output
-    output reg        scl_dir_o,  // i2c clock line output enable (active low)
+    output reg        scl_oe_o,   // i2c clock line output enable (active low)
     input             sda_i,      // i2c data line input
     output            sda_o,      // i2c data line output
-    output reg        sda_dir_o   // i2c data line output enable (active low)
+    output reg        sda_oe_o    // i2c data line output enable (active low)
 );
 
   reg [1:0] r_cSCL, r_cSDA;  // capture SCL and SDA
   reg [2:0] r_fSCL, r_fSDA;  // SCL and SDA filter inputs
   reg r_sSCL, r_sSDA;  // filtered and synchronized SCL and SDA inputs
   reg r_dSCL, r_dSDA;  // delayed versions of r_sSCL and r_sSDA
-  reg        r_dscl_dir;  // delayed scl_dir_o
+  reg        r_dscl_dir;  // delayed scl_oe_o
   reg        r_sda_chk;  // check SDA output (Multi-master arbitration)
   reg        r_clk_en;  // clock generation signals
   reg        r_slave_wait;  // slave inserts wait states
@@ -120,19 +120,19 @@ module i2c_master_bit_ctrl (
   // state machine variable
   reg [17:0] r_c_state;
   // whenever the slave is not ready it can delay the cycle by pulling SCL low
-  // delay scl_dir_o
-  always @(posedge clk_i) r_dscl_dir <= #1 scl_dir_o;
+  // delay scl_oe_o
+  always @(posedge clk_i) r_dscl_dir <= #1 scl_oe_o;
 
   // r_slave_wait is asserted when master wants to drive SCL high, but the slave pulls it low
   // r_slave_wait remains asserted until the slave releases SCL
   always @(posedge clk_i or negedge rst_n_i)
     if (!rst_n_i) r_slave_wait <= #1 1'b0;
-    else r_slave_wait <= #1 (scl_dir_o & ~r_dscl_dir & ~r_sSCL) | (r_slave_wait & ~r_sSCL);
-  // scl_dir_o & ~r_dscl_dir mean scl_dir rise edge trigger
+    else r_slave_wait <= #1 (scl_oe_o & ~r_dscl_dir & ~r_sSCL) | (r_slave_wait & ~r_sSCL);
+  // scl_oe_o & ~r_dscl_dir mean scl_dir rise edge trigger
 
   // master drives SCL high, but another master pulls it low
   // master start counting down its low cycle now (clock synchronization)
-  wire s_scl_sync = r_dSCL & ~r_sSCL & scl_dir_o;
+  wire s_scl_sync = r_dSCL & ~r_sSCL & scl_oe_o;
   // r_dSCL & ~r_sSCL mean scl fall edge trigger
 
   // generate clk_i enable signal
@@ -160,8 +160,8 @@ module i2c_master_bit_ctrl (
       r_cSCL <= #1 2'b00;
       r_cSDA <= #1 2'b00;
     end else begin
-      r_cSCL <= #1 {r_cSCL[0], scl_i};
-      r_cSDA <= #1 {r_cSDA[0], sda_i};
+      r_cSCL <= #1{r_cSCL[0], scl_i};
+      r_cSDA <= #1{r_cSDA[0], sda_i};
     end
 
 
@@ -178,8 +178,8 @@ module i2c_master_bit_ctrl (
       r_fSCL <= #1 3'b111;
       r_fSDA <= #1 3'b111;
     end else if (~|r_filter_cnt) begin
-      r_fSCL <= #1 {r_fSCL[1:0], r_cSCL[1]};
-      r_fSDA <= #1 {r_fSDA[1:0], r_cSDA[1]};
+      r_fSCL <= #1{r_fSCL[1:0], r_cSCL[1]};
+      r_fSDA <= #1{r_fSDA[1:0], r_cSDA[1]};
     end
 
 
@@ -230,7 +230,7 @@ module i2c_master_bit_ctrl (
 
   always @(posedge clk_i or negedge rst_n_i)
     if (~rst_n_i) al_o <= #1 1'b0;
-    else al_o <= #1 (r_sda_chk & ~r_sSDA & sda_dir_o) | (|r_c_state & r_sto_cond & ~r_cmd_stop);
+    else al_o <= #1 (r_sda_chk & ~r_sSDA & sda_oe_o) | (|r_c_state & r_sto_cond & ~r_cmd_stop);
 
   // generate dat_o signal (store SDA on rising edge of SCL)
   always @(posedge clk_i) if (r_sSCL & ~r_dSCL) dat_o <= #1 r_sSDA;
@@ -261,14 +261,14 @@ module i2c_master_bit_ctrl (
     if (!rst_n_i) begin
       r_c_state <= #1 idle;
       cmd_ack_o <= #1 1'b0;
-      scl_dir_o <= #1 1'b1;
-      sda_dir_o <= #1 1'b1;
+      scl_oe_o  <= #1 1'b1;
+      sda_oe_o  <= #1 1'b1;
       r_sda_chk <= #1 1'b0;
     end else if (al_o) begin
       r_c_state <= #1 idle;
       cmd_ack_o <= #1 1'b0;
-      scl_dir_o <= #1 1'b1;
-      sda_dir_o <= #1 1'b1;
+      scl_oe_o  <= #1 1'b1;
+      sda_oe_o  <= #1 1'b1;
       r_sda_chk <= #1 1'b0;
     end else begin
       cmd_ack_o <= #1 1'b0;  // default no command acknowledge + assert cmd_ack_o only 1clk cycle
@@ -285,132 +285,132 @@ module i2c_master_bit_ctrl (
               default:        r_c_state <= #1 idle;
             endcase
 
-            scl_dir_o <= #1 scl_dir_o;  // keep SCL in same state
-            sda_dir_o <= #1 sda_dir_o;  // keep SDA in same state
+            scl_oe_o  <= #1 scl_oe_o;  // keep SCL in same state
+            sda_oe_o  <= #1 sda_oe_o;  // keep SDA in same state
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           start_a: begin
             r_c_state <= #1 start_b;
-            scl_dir_o <= #1 scl_dir_o;  // keep SCL in same state
-            sda_dir_o <= #1 1'b1;  // set SDA high
+            scl_oe_o  <= #1 scl_oe_o;  // keep SCL in same state
+            sda_oe_o  <= #1 1'b1;  // set SDA high
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           start_b: begin
             r_c_state <= #1 start_c;
-            scl_dir_o <= #1 1'b1;  // set SCL high
-            sda_dir_o <= #1 1'b1;  // keep SDA high
+            scl_oe_o  <= #1 1'b1;  // set SCL high
+            sda_oe_o  <= #1 1'b1;  // keep SDA high
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           start_c: begin
             r_c_state <= #1 start_d;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 1'b0;  // set SDA low
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 1'b0;  // set SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           start_d: begin
             r_c_state <= #1 start_e;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 1'b0;  // keep SDA low
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 1'b0;  // keep SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           start_e: begin
             r_c_state <= #1 idle;
             cmd_ack_o <= #1 1'b1;
-            scl_dir_o <= #1 1'b0;  // set SCL low
-            sda_dir_o <= #1 1'b0;  // keep SDA low
+            scl_oe_o  <= #1 1'b0;  // set SCL low
+            sda_oe_o  <= #1 1'b0;  // keep SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           stop_a: begin
             r_c_state <= #1 stop_b;
-            scl_dir_o <= #1 1'b0;  // keep SCL low
-            sda_dir_o <= #1 1'b0;  // set SDA low
+            scl_oe_o  <= #1 1'b0;  // keep SCL low
+            sda_oe_o  <= #1 1'b0;  // set SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           stop_b: begin
             r_c_state <= #1 stop_c;
-            scl_dir_o <= #1 1'b1;  // set SCL high
-            sda_dir_o <= #1 1'b0;  // keep SDA low
+            scl_oe_o  <= #1 1'b1;  // set SCL high
+            sda_oe_o  <= #1 1'b0;  // keep SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           stop_c: begin
             r_c_state <= #1 stop_d;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 1'b0;  // keep SDA low
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 1'b0;  // keep SDA low
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           stop_d: begin
             r_c_state <= #1 idle;
             cmd_ack_o <= #1 1'b1;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 1'b1;  // set SDA high
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 1'b1;  // set SDA high
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           rd_a: begin
             r_c_state <= #1 rd_b;
-            scl_dir_o <= #1 1'b0;  // keep SCL low
-            sda_dir_o <= #1 1'b1;  // tri-state SDA
+            scl_oe_o  <= #1 1'b0;  // keep SCL low
+            sda_oe_o  <= #1 1'b1;  // tri-state SDA
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           rd_b: begin
             r_c_state <= #1 rd_c;
-            scl_dir_o <= #1 1'b1;  // set SCL high
-            sda_dir_o <= #1 1'b1;  // keep SDA tri-stated
+            scl_oe_o  <= #1 1'b1;  // set SCL high
+            sda_oe_o  <= #1 1'b1;  // keep SDA tri-stated
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           rd_c: begin
             r_c_state <= #1 rd_d;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 1'b1;  // keep SDA tri-stated
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 1'b1;  // keep SDA tri-stated
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           rd_d: begin
             r_c_state <= #1 idle;
             cmd_ack_o <= #1 1'b1;
-            scl_dir_o <= #1 1'b0;  // set SCL low
-            sda_dir_o <= #1 1'b1;  // keep SDA tri-stated
+            scl_oe_o  <= #1 1'b0;  // set SCL low
+            sda_oe_o  <= #1 1'b1;  // keep SDA tri-stated
             r_sda_chk <= #1 1'b0;  // don't check SDA output
           end
 
           wr_a: begin
             r_c_state <= #1 wr_b;
-            scl_dir_o <= #1 1'b0;  // keep SCL low
-            sda_dir_o <= #1 dat_i;  // set SDA
+            scl_oe_o  <= #1 1'b0;  // keep SCL low
+            sda_oe_o  <= #1 dat_i;  // set SDA
             r_sda_chk <= #1 1'b0;  // don't check SDA output (SCL low)
           end
 
           wr_b: begin
             r_c_state <= #1 wr_c;
-            scl_dir_o <= #1 1'b1;  // set SCL high
-            sda_dir_o <= #1 dat_i;  // keep SDA
+            scl_oe_o  <= #1 1'b1;  // set SCL high
+            sda_oe_o  <= #1 dat_i;  // keep SDA
             r_sda_chk <= #1 1'b0;  // don't check SDA output yet
             // allow some time for SDA and SCL to settle
           end
 
           wr_c: begin
             r_c_state <= #1 wr_d;
-            scl_dir_o <= #1 1'b1;  // keep SCL high
-            sda_dir_o <= #1 dat_i;
+            scl_oe_o  <= #1 1'b1;  // keep SCL high
+            sda_oe_o  <= #1 dat_i;
             r_sda_chk <= #1 1'b1;  // check SDA output
           end
 
           wr_d: begin
             r_c_state <= #1 idle;
             cmd_ack_o <= #1 1'b1;
-            scl_dir_o <= #1 1'b0;  // set SCL low
-            sda_dir_o <= #1 dat_i;
+            scl_oe_o  <= #1 1'b0;  // set SCL low
+            sda_oe_o  <= #1 dat_i;
             r_sda_chk <= #1 1'b0;  // don't check SDA output (SCL low)
           end
 

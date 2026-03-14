@@ -43,14 +43,14 @@ module apb4_i2c_tb ();
 
   tri_pd_pad_h u_scl_pad (
       .i_i   (u_i2c_if.scl_o),
-      .oen_i (u_i2c_if.scl_dir_o),
+      .oen_i (u_i2c_if.scl_oe_o),
       .ren_i (),
       .c_o   (u_i2c_if.scl_i),
       .pad_io(s_scl_pad)
   );
   tri_pd_pad_h u_sda_pad (
       .i_i   (u_i2c_if.sda_o),
-      .oen_i (u_i2c_if.sda_dir_o),
+      .oen_i (u_i2c_if.sda_oe_o),
       .ren_i (),
       .c_o   (u_i2c_if.sda_i),
       .pad_io(s_sda_pad)

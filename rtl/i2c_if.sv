@@ -11,29 +11,29 @@
 interface i2c_if ();
   logic scl_i;
   logic scl_o;
-  logic scl_dir_o;
+  logic scl_oe_o;
   logic sda_i;
   logic sda_o;
-  logic sda_dir_o;
+  logic sda_oe_o;
   logic irq_o;
 
   modport dut(
       input scl_i,
       output scl_o,
-      output scl_dir_o,
+      output scl_oe_o,
       input sda_i,
       output sda_o,
-      output sda_dir_o,
+      output sda_oe_o,
       output irq_o
   );
 
   modport tb(
       output scl_i,
       input scl_o,
-      input scl_dir_o,
+      input scl_oe_o,
       output sda_i,
       input sda_o,
-      input sda_dir_o,
+      input sda_oe_o,
       input irq_o
   );
 endinterface

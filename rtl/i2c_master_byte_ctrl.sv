@@ -67,10 +67,10 @@ module i2c_master_byte_ctrl (
     output            i2c_al_o,
     input             scl_i,
     output            scl_o,
-    output            scl_dir_o,
+    output            scl_oe_o,
     input             sda_i,
     output            sda_o,
-    output            sda_dir_o
+    output            sda_oe_o
 );
 
   // statemachine
@@ -109,10 +109,10 @@ module i2c_master_byte_ctrl (
       .dat_o    (core_rxd),
       .scl_i    (scl_i),
       .scl_o    (scl_o),
-      .scl_dir_o(scl_dir_o),
+      .scl_oe_o (scl_oe_o),
       .sda_i    (sda_i),
       .sda_o    (sda_o),
-      .sda_dir_o(sda_dir_o)
+      .sda_oe_o(sda_oe_o)
   );
 
   // generate go-signal
@@ -198,7 +198,7 @@ module i2c_master_byte_ctrl (
         if (core_ack)
           if (cnt_done) begin
             c_state  <= #1 ST_ACK;
-            core_cmd <= #1 `I2C_CMD_READ; // NOTE: read the ack
+            core_cmd <= #1 `I2C_CMD_READ;  // NOTE: read the ack
           end else begin
             c_state  <= #1 ST_WRITE;  // stay in same state
             core_cmd <= #1 `I2C_CMD_WRITE;  // write_i next bit
@@ -209,7 +209,7 @@ module i2c_master_byte_ctrl (
         if (core_ack) begin
           if (cnt_done) begin
             c_state  <= #1 ST_ACK;
-            core_cmd <= #1 `I2C_CMD_WRITE; // NOTE: write the ack
+            core_cmd <= #1 `I2C_CMD_WRITE;  // NOTE: write the ack
           end else begin
             c_state  <= #1 ST_READ;  // stay in same state
             core_cmd <= #1 `I2C_CMD_READ;  // read_i next bit
